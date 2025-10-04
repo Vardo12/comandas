@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Furatto - Administrador</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f9;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      background: #e63946;
+      color: #fff;
+      padding: 15px;
+      text-align: center;
+      font-size: 24px;
+      font-weight: bold;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+    .formulario {
+      margin: 20px auto;
+      max-width: 400px;
+      padding: 20px;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+    .formulario input, .formulario button {
+      display: block;
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 14px;
+    }
+    .formulario button {
+      background: #06d6a0;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+    }
+    .formulario button:hover {
+      background: #05b384;
+    }
+    #lista {
+      margin: 20px;
+    }
+    .comanda {
+      background: #fffbcc;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 6px;
+      border-left: 5px solid #e63946;
+    }
+  </style>
+</head>
+<body>
+  <header>🍣 Furatto - Administrador</header>
+
+  <div class="formulario">
+    <input type="number" id="boleta" placeholder="Número de Boleta">
+    <input type="text" id="producto" placeholder="Nombre del producto">
+    <input type="number" id="minutos" placeholder="Tiempo (min)" min="1">
+    <button onclick="agregarComanda()">➕ Agregar Comanda</button>
+  </div>
+
+  <div id="lista"></div>
+
+  <script>
+    let comandas = JSON.parse(localStorage.getItem("comandas")) || [];
+    let idCounter = comandas.length ? comandas[comandas.length-1].id+1 : 1;
+
+    function agregarComanda() {
+      const boleta = document.getElementById("boleta").value;
+      const producto = document.getElementById("producto").value;
+      const minutos = parseInt(document.getElementById("minutos").value);
+
+      if(!boleta || !producto || !minutos) {
+        alert("Ingresa número de boleta, producto y minutos");
+        return;
+      }
+
+      const comanda = {
+        id: idCounter++,
+        boleta,
+        producto,
+        tiempoRestante: minutos*60,
+        creada: Date.now()
+      };
+
+      comandas.push(comanda);
+      localStorage.setItem("comandas", JSON.stringify(comandas));
+      renderLista();
+
+      // limpiar inputs
+      document.getElementById("boleta").value = "";
+      document.getElementById("producto").value = "";
+      document.getElementById("minutos").value = "";
+    }
+
+    function renderLista() {
+      const lista = document.getElementById("lista");
+      lista.innerHTML = "";
+      comandas.forEach(c => {
+        const div = document.createElement("div");
+        div.className = "comanda";
+        div.innerHTML = `<b>#${c.id}</b> - Boleta ${c.boleta} - ${c.producto} (${Math.floor(c.tiempoRestante/60)} min)`;
+        lista.appendChild(div);
+      });
+    }
+
+    renderLista();
+  </script>
+</body>
+</html>
