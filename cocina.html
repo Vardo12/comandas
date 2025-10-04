@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Furatto - Cocina</title>
   <style>
     body {
@@ -64,43 +64,24 @@
   <header>🍣 Furatto - Cocina</header>
   <div class="container" id="comandas"></div>
 
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
   <script>
-    let prevLength = 0;
+    // Configura aquí tu Firebase (reemplaza con tus datos)
+    const firebaseConfig = {
+      apiKey: "TU_API_KEY",
+      authDomain: "TU_AUTH_DOMAIN",
+      projectId: "TU_PROJECT_ID",
+      storageBucket: "TU_STORAGE_BUCKET",
+      messagingSenderId: "TU_SENDER_ID",
+      appId: "TU_APP_ID"
+    };
 
-    function reproducirAlerta() {
-      const audio = new Audio("https://www.soundjay.com/buttons/sounds/beep-07.mp3");
-      audio.play();
-    }
-
-    function renderComandas() {
-      let comandas = JSON.parse(localStorage.getItem("comandas")) || [];
-      
-      // alerta si hay comandas nuevas
-      if (comandas.length > prevLength) {
-        reproducirAlerta();
-      }
-      prevLength = comandas.length;
-
-      // pintar comandas
-      const contenedor = document.getElementById("comandas");
-      contenedor.innerHTML = "";
-      comandas.forEach(c => {
-        c.tiempoRestante -= 1;
-        const div = document.createElement("div");
-        div.className = "comanda";
-        if (c.tiempoRestante <= 0) div.classList.add("retrasado");
-        div.innerHTML = `
-          <h3>Boleta ${c.boleta}</h3>
-          <p><b>Pedido #${c.id}</b></p>
-          <p><b>Producto:</b> ${c.producto}</p>
-          <p class="tiempo">${formatoTiempo(c.tiempoRestante)}</p>
-          <button onclick="entregarComanda(${c.id})">✅ Entregar</button>
-        `;
-        contenedor.appendChild(div);
-      });
-
-      localStorage.setItem("comandas", JSON.stringify(comandas));
-    }
+    // Inicializa Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
     function formatoTiempo(segundos) {
       const min = Math.floor(Math.abs(segundos) / 60);
@@ -110,17 +91,45 @@
         : `⚠️ Atrasado ${min}m ${sec}s`;
     }
 
-    function entregarComanda(id) {
-      let comandas = JSON.parse(localStorage.getItem("comandas")) || [];
-      comandas = comandas.filter(c => c.id !== id);
-      localStorage.setItem("comandas", JSON.stringify(comandas));
-      renderComandas();
-    }
+    // Escucha en tiempo real las comandas
+    db.collection("comandas")
+      .orderBy("creada")
+      .onSnapshot((snapshot) => {
+        const contenedor = document.getElementById("comandas");
+        contenedor.innerHTML = "";
 
-    setInterval(renderComandas, 1000);
-    renderComandas();
+        snapshot.forEach(doc => {
+          let c = doc.data();
+
+          // Actualizar el tiempo restante (se resta 1 segundo cada segundo)
+          if (!c.tiempoRestanteActualizado) {
+            c.tiempoRestanteActualizado = c.tiempoRestante;
+          } else {
+            c.tiempoRestanteActualizado--;
+          }
+
+          const div = document.createElement("div");
+          div.className = "comanda";
+          if (c.tiempoRestanteActualizado <= 0) div.classList.add("retrasado");
+          div.innerHTML = `
+            <h3>Boleta ${c.boleta}</h3>
+            <p><b>Pedido ID:</b> ${doc.id}</p>
+            <p><b>Producto:</b> ${c.producto}</p>
+            <p class="tiempo">${formatoTiempo(c.tiempoRestanteActualizado)}</p>
+            <button onclick="entregarComanda('${doc.id}')">✅ Entregar</button>
+          `;
+          contenedor.appendChild(div);
+        });
+      });
+
+    // Función para eliminar una comanda (marcar entregada)
+    async function entregarComanda(id) {
+      try {
+        await db.collection("comandas").doc(id).delete();
+      } catch (error) {
+        console.error("Error al entregar comanda:", error);
+      }
+    }
   </script>
 </body>
 </html>
-
-
