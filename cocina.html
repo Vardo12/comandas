@@ -1,135 +1,178 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>Furatto - Cocina</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background: #f4f6f9;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #fff3e0, #ffe0b2);
+      color: #333;
       margin: 0;
-      padding: 0;
-    }
-    header {
-      background: #e63946;
-      color: #fff;
-      padding: 15px;
-      text-align: center;
-      font-size: 24px;
-      font-weight: bold;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    }
-    .container {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-      gap: 15px;
       padding: 20px;
+      animation: fadeIn 1s ease-in;
     }
+
+    h1 {
+      text-align: center;
+      color: #ff6600;
+      margin-bottom: 25px;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+      animation: slideInDown 0.8s ease;
+    }
+
+    #comandas {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+      gap: 18px;
+    }
+
     .comanda {
-      background: #fffbcc;
-      border-left: 6px solid #e63946;
-      padding: 10px;
-      border-radius: 10px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      background: #fff;
+      border-radius: 12px;
+      padding: 14px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      transition: all 0.3s ease;
+      border-left: 8px solid #ff6600;
+      animation: fadeInUp 0.6s ease;
     }
+
+    .comanda:hover {
+      transform: scale(1.04);
+    }
+
     .comanda h3 {
-      margin: 0;
-      font-size: 16px;
+      margin: 0 0 6px;
+      color: #ff6600;
+      font-size: 17px;
     }
+
     .comanda p {
       margin: 3px 0;
       font-size: 14px;
     }
-    .tiempo {
-      font-weight: bold;
-      margin-top: 5px;
+
+    .alerta {
+      background: #fff8e1;
+      border-left: 8px solid #ffcc00;
     }
-    .retrasado {
-      background: #ffe3e3;
-      border-left: 6px solid #d00000;
+
+    .retrasada {
+      background: #ffebee;
+      border-left: 8px solid #ff4444;
     }
+
     button {
-      background: #06d6a0;
+      width: 100%;
+      margin-top: 10px;
+      padding: 8px;
+      background: #ff6600;
+      color: white;
       border: none;
-      padding: 6px 10px;
-      border-radius: 6px;
-      margin-top: 8px;
+      border-radius: 8px;
       cursor: pointer;
-      font-size: 13px;
-      color: #fff;
+      font-weight: bold;
+      transition: background 0.2s ease;
+    }
+
+    button:hover {
+      background: #ff8533;
+    }
+
+    /* Animaciones */
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes slideInDown {
+      from { transform: translateY(-20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    @keyframes fadeInUp {
+      from { transform: translateY(15px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
     }
   </style>
 </head>
 <body>
-  <header>🍣 Furatto - Cocina</header>
-  <div class="container" id="comandas"></div>
+  <h1>Órdenes en Cocina - Furatto</h1>
+  <div id="comandas"></div>
 
-  <!-- Firebase SDKs -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script type="module">
+    import { db, ref, onValue, update } from "./firebase.js";
 
-  <script>
-    // Configura aquí tu Firebase (reemplaza con tus datos)
-    const firebaseConfig = {
-      apiKey: "TU_API_KEY",
-      authDomain: "TU_AUTH_DOMAIN",
-      projectId: "TU_PROJECT_ID",
-      storageBucket: "TU_STORAGE_BUCKET",
-      messagingSenderId: "TU_SENDER_ID",
-      appId: "TU_APP_ID"
-    };
+    const listaComandas = document.getElementById("comandas");
+    let alertaSonando = false;
 
-    // Inicializa Firebase
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
+    onValue(ref(db, "comandas"), (snapshot) => {
+      const comandasActuales = [];
+      listaComandas.innerHTML = "";
 
-    function formatoTiempo(segundos) {
-      const min = Math.floor(Math.abs(segundos) / 60);
-      const sec = Math.abs(segundos) % 60;
-      return segundos >= 0 
-        ? `⏳ ${min}m ${sec}s restantes`
-        : `⚠️ Atrasado ${min}m ${sec}s`;
-    }
+      if (snapshot.exists()) {
+        snapshot.forEach((child) => {
+          const key = child.key;
+          const data = child.val();
 
-    // Escucha en tiempo real las comandas
-    db.collection("comandas")
-      .orderBy("creada")
-      .onSnapshot((snapshot) => {
-        const contenedor = document.getElementById("comandas");
-        contenedor.innerHTML = "";
+          if (data.entregada) return;
 
-        snapshot.forEach(doc => {
-          let c = doc.data();
-
-          // Actualizar el tiempo restante (se resta 1 segundo cada segundo)
-          if (!c.tiempoRestanteActualizado) {
-            c.tiempoRestanteActualizado = c.tiempoRestante;
-          } else {
-            c.tiempoRestanteActualizado--;
-          }
+          comandasActuales.push(data);
 
           const div = document.createElement("div");
           div.className = "comanda";
-          if (c.tiempoRestanteActualizado <= 0) div.classList.add("retrasado");
-          div.innerHTML = `
-            <h3>Boleta ${c.boleta}</h3>
-            <p><b>Pedido ID:</b> ${doc.id}</p>
-            <p><b>Producto:</b> ${c.producto}</p>
-            <p class="tiempo">${formatoTiempo(c.tiempoRestanteActualizado)}</p>
-            <button onclick="entregarComanda('${doc.id}')">✅ Entregar</button>
-          `;
-          contenedor.appendChild(div);
-        });
-      });
 
-    // Función para eliminar una comanda (marcar entregada)
-    async function entregarComanda(id) {
-      try {
-        await db.collection("comandas").doc(id).delete();
-      } catch (error) {
-        console.error("Error al entregar comanda:", error);
+          div.innerHTML = `
+            <h3>Boleta #${data.numeroBoleta}</h3>
+            <p><strong>Producto:</strong> ${data.producto}</p>
+            <p><strong>Tiempo Prep:</strong> ${data.tiempoPrep} min</p>
+            <p id="timer-${key}"></p>
+            <button onclick="entregar('${key}')">Entregar</button>
+          `;
+
+          listaComandas.appendChild(div);
+          iniciarTimer(key, data.creada, data.tiempoPrep, div);
+        });
+
+        if (!alertaSonando && comandasActuales.length > 0) {
+          const audio = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
+          audio.play();
+          alertaSonando = true;
+          setTimeout(() => (alertaSonando = false), 2000);
+        }
+      } else {
+        listaComandas.innerHTML = "<p>No hay comandas activas</p>";
       }
+    });
+
+    window.entregar = (id) => {
+      update(ref(db, "comandas/" + id), { entregada: true });
+    };
+
+    // Temporizador con segundos
+    function iniciarTimer(id, creada, tiempoPrep, card) {
+      const timerEl = document.getElementById("timer-" + id);
+
+      setInterval(() => {
+        const ahora = Date.now();
+        const transcurrido = Math.floor((ahora - creada) / 1000);
+        const restanteSeg = (tiempoPrep * 60) - transcurrido;
+
+        const minutos = Math.floor(Math.abs(restanteSeg) / 60);
+        const segundos = Math.abs(restanteSeg) % 60;
+        const tiempoFormateado = `${minutos}:${segundos.toString().padStart(2, "0")}`;
+
+        if (restanteSeg > 0) {
+          timerEl.textContent = `Faltan ${tiempoFormateado}`;
+          if (restanteSeg <= 600) card.classList.add("alerta");
+        } else {
+          timerEl.textContent = `Retraso ${tiempoFormateado}`;
+          timerEl.style.color = "red";
+          card.classList.add("retrasada");
+        }
+      }, 1000);
     }
   </script>
 </body>
 </html>
+

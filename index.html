@@ -1,135 +1,109 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>Furatto - Administrador</title>
+  <link rel="stylesheet" href="style.css">
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background: #f4f6f9;
-      margin: 0;
-      padding: 0;
+      background: linear-gradient(135deg, #fff7f0, #ffe4cc);
+      animation: fondo 10s ease infinite alternate;
     }
-    header {
-      background: #e63946;
-      color: #fff;
-      padding: 15px;
-      text-align: center;
-      font-size: 24px;
-      font-weight: bold;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    @keyframes fondo {
+      from { background-position: 0 0; }
+      to { background-position: 100% 100%; }
     }
-    .formulario {
-      margin: 20px auto;
-      max-width: 400px;
-      padding: 20px;
+    .container {
+      max-width: 450px;
+      margin: 40px auto;
       background: #fff;
-      border-radius: 8px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      border-radius: 20px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      padding: 30px;
+      text-align: center;
+      transition: transform 0.3s ease;
     }
-    .formulario input, .formulario button {
-      display: block;
-      width: 100%;
-      padding: 10px;
-      margin: 8px 0;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-      font-size: 14px;
+    .container:hover {
+      transform: translateY(-5px);
     }
-    .formulario button {
-      background: #06d6a0;
-      color: #fff;
+    h1 {
+      color: #ff6600;
+      margin-bottom: 25px;
+      font-size: 26px;
+      letter-spacing: 1px;
+    }
+    input, button {
+      width: 90%;
+      margin: 10px 0;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid #ddd;
+      font-size: 15px;
+      outline: none;
+      transition: 0.2s;
+    }
+    input:focus {
+      border-color: #ff6600;
+      box-shadow: 0 0 6px rgba(255,102,0,0.3);
+    }
+    button {
+      background: #ff6600;
+      color: white;
+      font-weight: bold;
       border: none;
       cursor: pointer;
+      transition: all 0.2s;
     }
-    .formulario button:hover {
-      background: #05b384;
+    button:hover {
+      background: #ff8533;
+      transform: scale(1.05);
     }
-    #lista {
-      margin: 20px;
-    }
-    .comanda {
-      background: #fffbcc;
-      padding: 10px;
-      margin-bottom: 10px;
-      border-left: 5px solid #e63946;
+    footer {
+      text-align: center;
+      margin-top: 25px;
+      font-size: 13px;
+      color: #555;
+      opacity: 0.8;
     }
   </style>
 </head>
 <body>
-  <header>🍣 Furatto - Administrador</header>
-
-  <div class="formulario">
-    <input type="number" id="boleta" placeholder="Número de Boleta" />
-    <input type="text" id="producto" placeholder="Nombre del producto" />
-    <input type="number" id="minutos" placeholder="Tiempo (min)" min="1" />
-    <button onclick="agregarComanda()">➕ Agregar Comanda</button>
+  <div class="container">
+    <h1>Administrador Furatto</h1>
+    <form id="comanda-form">
+      <input type="text" id="numeroBoleta" placeholder="Número de Boleta" required>
+      <input type="text" id="producto" placeholder="Producto / Promoción" required>
+      <input type="number" id="tiempoPrep" placeholder="Tiempo de preparación (min)" required>
+      <button type="submit">Agregar Comanda</button>
+    </form>
   </div>
 
-  <div id="lista"></div>
+  <footer>🍣 Sistema de Comandas Furatto</footer>
 
-  <!-- Firebase SDKs -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script type="module">
+    import { db, ref, push } from "./firebase.js";
 
-  <script>
-    // Configura aquí tu Firebase (reemplaza con tus datos)
-    const firebaseConfig = {
-      apiKey: "TU_API_KEY",
-      authDomain: "TU_AUTH_DOMAIN",
-      projectId: "TU_PROJECT_ID",
-      storageBucket: "TU_STORAGE_BUCKET",
-      messagingSenderId: "TU_SENDER_ID",
-      appId: "TU_APP_ID"
-    };
+    const form = document.getElementById("comanda-form");
 
-    // Inicializa Firebase
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
 
-    // Función para agregar comanda a Firestore
-    async function agregarComanda() {
-      const boleta = document.getElementById("boleta").value;
+      const numeroBoleta = document.getElementById("numeroBoleta").value;
       const producto = document.getElementById("producto").value;
-      const minutos = parseInt(document.getElementById("minutos").value);
+      const tiempoPrep = parseInt(document.getElementById("tiempoPrep").value);
 
-      if (!boleta || !producto || !minutos) {
-        alert("Ingresa número de boleta, producto y minutos");
-        return;
-      }
-
-      const comanda = {
-        boleta,
+      push(ref(db, "comandas"), {
+        numeroBoleta,
         producto,
-        tiempoRestante: minutos * 60,
-        creada: Date.now()
-      };
-
-      try {
-        await db.collection("comandas").add(comanda);
-        // Limpiar inputs
-        document.getElementById("boleta").value = "";
-        document.getElementById("producto").value = "";
-        document.getElementById("minutos").value = "";
-      } catch (error) {
-        console.error("Error al agregar comanda: ", error);
-      }
-    }
-
-    // Mostrar lista de comandas en admin (opcional)
-    db.collection("comandas")
-      .orderBy("creada")
-      .onSnapshot((snapshot) => {
-        const lista = document.getElementById("lista");
-        lista.innerHTML = "";
-        snapshot.forEach(doc => {
-          const c = doc.data();
-          const div = document.createElement("div");
-          div.className = "comanda";
-          div.innerHTML = `<b>Boleta:</b> ${c.boleta} - <b>Producto:</b> ${c.producto} - <b>Tiempo:</b> ${Math.floor(c.tiempoRestante / 60)} min`;
-          lista.appendChild(div);
-        });
+        tiempoPrep,
+        creada: Date.now(),
+        entregada: false
       });
+
+      form.reset();
+      const beep = new Audio("https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg");
+      beep.play();
+    });
   </script>
 </body>
 </html>
